@@ -5,12 +5,10 @@ import { AndroidPermissions } from '@ionic-native/android-permissions/ngx';
 const constraints = {
     video: {
         width: {
-            min: 1280,
             ideal: 1920,
             max: 2560,
         },
         height: {
-            min: 720,
             ideal: 1080,
             max: 1440
         },
@@ -25,7 +23,7 @@ const constraints = {
 })
 export class Tab2Page{
 
-    @ViewChild('videoContainer', {static: false}) videoContainer;
+    @ViewChild('videoContainer', {static: true}) videoContainer;
     private video;
     private stream;
 
@@ -44,15 +42,15 @@ export class Tab2Page{
         if (this.platform.is('android')) {
             this.platform.ready().then(async () => {
                 try {
-                    let isPermissionAvailable = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
-                    if (isPermissionAvailable) {
-                        this.initWebRTC();
+                    let permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
+                    if (permissionResponse.hasPermission) {
+                        this.play();
                     } else {
                         await this.androidPermissions.requestPermissions([this.androidPermissions.PERMISSION.CAMERA]);
-                        isPermissionAvailable = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
-                        console.log("permission available: " + isPermissionAvailable);
-                        if (isPermissionAvailable) {
-                            this.initWebRTC();
+                        permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
+                        console.log("permission available: " + permissionResponse);
+                        if (permissionResponse.hasPermission) {
+                            this.play();
                         }
                     }
                 } catch (error) {
@@ -60,27 +58,30 @@ export class Tab2Page{
                 }
             });
         } else {
-            this.initWebRTC();
+            this.play();
         }
     }
 
-    initWebRTC() {
-        const handleSuccess = (stream: MediaStream) => {
-            if (this.stream) {
-                this.stream.getTracks().forEach(track => track.stop());
-            }
-            this.stream = stream;
-            this.video.srcObject = this.stream;
-        };
-
-        const handleError = (error: any) => {
-            const p = document.createElement('p');
-            p.innerHTML = 'navigator.getUserMedia error: ' + error.name + ', ' + error.message;
-            this.videoContainer.nativeElement.appendChild(p);
-        };
-
-        navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+    play(){
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => this.handleSuccess(stream))
+            .catch(error => this.handleError(error));
     }
+
+    handleSuccess (stream: MediaStream) {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+        }
+        this.stream = stream;
+        this.video.srcObject = this.stream;
+    };
+
+    handleError (error: any) {
+        console.log(error);
+        const p = document.createElement('p');
+        p.innerHTML = 'navigator.getUserMedia error: ' + error.name + ', ' + error.message;
+        this.videoContainer.nativeElement.appendChild(p);
+    };
 
     ionViewDidLeave() {
         if (this.video && this.video.srcObject) {
