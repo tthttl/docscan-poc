@@ -1,4 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Platform } from '@ionic/angular';
 
 @Component({
     selector: 'app-tab1',
@@ -7,7 +8,7 @@ import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 })
 export class Tab1Page implements OnInit {
 
-    constructor() {
+    constructor(private platform: Platform) {
     }
 
     // The width and height of the captured photo. We will set the
@@ -25,12 +26,16 @@ export class Tab1Page implements OnInit {
     canvas;
     photo;
     startbutton;
+    stream: MediaStream;
 
     ngOnInit(): void {
         this.video = document.getElementById('video');
         this.canvas = document.getElementById('canvas');
         this.photo = document.getElementById('photo');
         this.startbutton = document.getElementById('startbutton');
+    }
+
+    ionViewDidEnter() {
         this.startup();
     }
 
@@ -72,14 +77,24 @@ export class Tab1Page implements OnInit {
         }
     }
 
+    ionViewDidLeave() {
+        if (this.video && this.video.srcObject) {
+            this.video.srcObject.getTracks().forEach(track => track.stop());
+        }
+    }
+
     private async startup() {
-        let stream: MediaStream;
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({video: true, audio: false});
-            this.video.srcObject = stream;
-            this.video.play();
-        } catch (err) {
-            console.log("An error occurred: " + err);
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+        }
+        if (!this.platform.is('ios') && !this.platform.is('android')) {
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({video: true, audio: false});
+                this.video.srcObject = this.stream;
+                this.video.play();
+            } catch (err) {
+                console.log("An error occurred: " + err);
+            }
         }
         this.clearphoto();
     }
