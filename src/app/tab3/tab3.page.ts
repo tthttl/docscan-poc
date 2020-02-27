@@ -39,4 +39,10 @@ export class Tab3Page implements OnInit {
         this.videoContainer.nativeElement.appendChild(this.video);
     }
 
+    ionViewDidLeave() {
+        if (this.video && this.video.srcObject) {
+            this.video.srcObject.getTracks().forEach(track => track.stop());
+        }
+    }
+
 }
