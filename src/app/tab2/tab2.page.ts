@@ -29,8 +29,8 @@ export class Tab2Page{
 
     constructor(private platform: Platform, private androidPermissions: AndroidPermissions) {
         this.video = document.createElement('video');
-        this.video.width = 640;
-        this.video.height = 480;
+        this.video.width = 320;
+        this.video.height = 240;
         this.video.setAttribute('autoplay', '');
     }
 
@@ -43,22 +43,13 @@ export class Tab2Page{
             this.platform.ready().then(async () => {
                 try {
                     let permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
-                    if (permissionResponse.hasPermission) {
-                        this.play();
-                    } else {
+                    if (!permissionResponse.hasPermission) {
                         await this.androidPermissions.requestPermissions([this.androidPermissions.PERMISSION.CAMERA]);
-                        permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
-                        console.log("permission available: " + permissionResponse);
-                        if (permissionResponse.hasPermission) {
-                            this.play();
-                        }
                     }
                 } catch (error) {
                     console.log(error);
                 }
             });
-        } else {
-            this.play();
         }
     }
 
