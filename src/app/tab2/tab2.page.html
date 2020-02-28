@@ -1,4 +1,12 @@
-<ion-content padding>
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Android
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
   <ion-button (click)="play()">Start</ion-button>
   <div #videoContainer></div>
 </ion-content>
