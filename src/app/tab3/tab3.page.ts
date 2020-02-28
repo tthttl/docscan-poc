@@ -33,10 +33,17 @@ export class Tab3Page implements OnInit {
     }
 
     play() {
-        navigator.mediaDevices.getUserMedia(this.constraints).then((stream) => {
-            this.video.srcObject = stream;
-        });
-        this.videoContainer.nativeElement.appendChild(this.video);
+        console.log(isSecureContext);
+        console.log(navigator.mediaDevices);
+        console.log(adapter.browserDetails);
+        if(isSecureContext){
+            if(navigator.mediaDevices){
+                navigator.mediaDevices.getUserMedia(this.constraints).then((stream) => {
+                    this.video.srcObject = stream;
+                });
+                this.videoContainer.nativeElement.appendChild(this.video);
+            }
+        }
     }
 
     ionViewDidLeave() {
