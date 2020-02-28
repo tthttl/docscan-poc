@@ -7,6 +7,22 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-button (click)="play()">Start</ion-button>
-  <div #videoContainer></div>
+  <ion-grid>
+    <ion-row>
+      <ion-col size-sm="12" size-md="6">
+        <div class="camera">
+          <video (canplay)="setSize()" id="video" #video>Video stream not available.</video>
+        </div>
+      </ion-col>
+      <ion-col size-sm="12" size-md="6">
+        <canvas id="canvas" #canvas>
+        </canvas>
+        <div class="output">
+          <img id="photo" alt="The screen capture will appear in this box." #photo>
+        </div>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+  <ion-button (click)="clearphoto()" fill="outline" color="danger">CLEAR</ion-button>
+  <ion-button (click)="takepicture()" id="startbutton" color="primary">SNAP</ion-button>
 </ion-content>
