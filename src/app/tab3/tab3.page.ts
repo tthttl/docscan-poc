@@ -1,55 +1,36 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import adapter from 'webrtc-adapter';
 
+
+export interface CapturedImage {
+    readonly name: string
+    readonly src: string,
+}
 
 @Component({
     selector: 'app-tab3',
     templateUrl: 'tab3.page.html',
     styleUrls: ['tab3.page.scss']
 })
-export class Tab3Page implements OnInit {
+export class Tab3Page {
 
-    @ViewChild('videoContainer', {static: true}) videoContainer;
-
-    video;
-    facingMode = "environment";
-    constraints = {
-        audio: false,
-        video: {
-            facingMode: this.facingMode
-        }
-    };
+    @ViewChild('captureInput', {static: true}) captureInput;
+    images: CapturedImage[] = [];
 
     constructor() {
     }
 
-    ngOnInit(): void {
-        this.video = document.createElement('video');
-        this.video.style.width = 640 + 'px';
-        this.video.style.height = 480 + 'px';
-        this.video.setAttribute('autoplay', '');
-        this.video.setAttribute('muted', '');
-        this.video.setAttribute('playsinline', '');
-    }
-
-    play() {
-        console.log(isSecureContext);
-        console.log(navigator.mediaDevices);
-        console.log(adapter.browserDetails);
-        if(isSecureContext){
-            if(navigator.mediaDevices){
-                navigator.mediaDevices.getUserMedia(this.constraints).then((stream) => {
-                    this.video.srcObject = stream;
-                });
-                this.videoContainer.nativeElement.appendChild(this.video);
-            }
+    onChange() {
+        for (let image of this.captureInput.nativeElement.files) {
+            this.images.push({
+                name: this.createName(image.name, (this.images.length + 1)),
+                src: window.URL.createObjectURL(image)
+            });
         }
     }
 
-    ionViewDidLeave() {
-        if (this.video && this.video.srcObject) {
-            this.video.srcObject.getTracks().forEach(track => track.stop());
-        }
+    private createName(name: string, num: number): string {
+        const nameArr = name.split('.');
+        return nameArr[0] + '-' + num + '.' + nameArr[1];
     }
 
 }

@@ -1,5 +1,22 @@
-<ion-content padding>
-  <ion-button (click)="play()">Start</ion-button>
-  <div #videoContainer></div>
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Iphone
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-item>
+    <input type="file" accept="image/*, video/*" (change)="onChange()" capture #captureInput class="">
+  </ion-item>
+  <ion-list>
+    <ion-item *ngFor="let image of images">
+      <ion-thumbnail slot="start">
+        <ion-img [src]="image.src"></ion-img>
+      </ion-thumbnail>
+      <ion-label>{{image.name}}</ion-label>
+    </ion-item>
+  </ion-list>
 </ion-content>
 
