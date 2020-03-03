@@ -1,6 +1,6 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
-import { Platform } from '@ionic/angular';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { AndroidPermissions } from '@ionic-native/android-permissions/ngx';
+import { Platform } from '@ionic/angular';
 
 const constraints = {
     video: {
@@ -17,56 +17,63 @@ const constraints = {
     audio: false
 };
 
+declare const cordova: any;
+
 @Component({
     selector: 'app-tab2',
     templateUrl: 'tab2.page.html',
     styleUrls: ['tab2.page.scss']
 })
-export class Tab2Page implements AfterViewInit {
+export class Tab2Page {
 
-    @ViewChild('video', {static: true}) video;
-    @ViewChild('canvas', {static: true}) canvas;
-    @ViewChild('photo', {static: true}) photo;
+
+    @ViewChild('video', {static: false}) video;
+    @ViewChild('canvas', {static: false}) canvas;
+    @ViewChild('photo', {static: false}) photo;
     width = 320;
     height = 0;
     streaming = false;
     stream: MediaStream;
 
-    constructor(private platform: Platform, private androidPermissions: AndroidPermissions) {
-    }
-
-    ngAfterViewInit(): void {
-        this.video.nativeElement.width = 320;
-        this.video.nativeElement.height = 240;
-        this.video.nativeElement.setAttribute('autoplay', '');
+    constructor(
+        private platform: Platform,
+        private androidPermissions: AndroidPermissions) {
     }
 
     ionViewDidEnter() {
-        if (this.platform.is('android')) {
-            this.platform.ready().then(async () => {
+        this.photo.nativeElement.setAttribute('crossorigin', 'anonymus');
+        this.platform.ready().then(async () => {
+            if (this.platform.is('android')) {
                 try {
                     let permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
                     if (!permissionResponse.hasPermission) {
                         await this.androidPermissions.requestPermissions([this.androidPermissions.PERMISSION.CAMERA]);
                     }
-                    this.startup();
                 } catch (error) {
                     console.log(error);
                 }
-            });
-        }
+            }
+            if (this.platform.is('ios')) {
+                cordova.plugins.iosrtc.registerGlobals();
+                await cordova.plugins.iosrtc.requestPermission(false, true, (isApproved) =>
+                    console.log('requestPermission status: ', isApproved ? 'Approved' : 'Rejected')
+                );
+            }
+            await this.startup();
+            this.setSize();
+        });
     }
 
     setSize() {
         if (!this.streaming) {
-            this.height = this.video.videoHeight / (this.video.videoWidth / this.width);
+            this.height = this.video.nativeElement.videoHeight / (this.video.nativeElement.videoWidth / this.width);
             if (isNaN(this.height)) {
                 this.height = this.width / (4 / 3);
             }
-            this.video.nativeElement.setAttribute('width', this.width);
-            this.video.nativeElement.setAttribute('height', this.height);
-            this.canvas.nativeElement.setAttribute('width', this.width);
-            this.canvas.nativeElement.setAttribute('height', this.height);
+            this.video.nativeElement.setAttribute('width', this.width.toString());
+            this.video.nativeElement.setAttribute('height', this.height.toString());
+            this.canvas.nativeElement.setAttribute('width', this.width.toString());
+            this.canvas.nativeElement.setAttribute('height', this.height.toString());
             this.streaming = true;
         }
     }
@@ -78,11 +85,13 @@ export class Tab2Page implements AfterViewInit {
             this.canvas.nativeElement.height = this.height;
             context.drawImage(this.video.nativeElement, 0, 0, this.width, this.height);
             const data = this.canvas.nativeElement.toDataURL('image/png');
-            this.photo.nativeElement.setAttribute('src', data);
+            console.log(data);
+            this.photo.nativeElement.setAttribute('src', data)
         } else {
             this.clearphoto();
         }
     }
+
 
     ionViewDidLeave() {
         if (this.video.nativeElement && this.video.nativeElement.srcObject) {
@@ -91,9 +100,7 @@ export class Tab2Page implements AfterViewInit {
     }
 
     private async startup() {
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-        }
+        this.stopTracks();
         try {
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.video.nativeElement.srcObject = this.stream;
@@ -111,4 +118,13 @@ export class Tab2Page implements AfterViewInit {
         const data = this.canvas.nativeElement.toDataURL('image/png');
         this.photo.nativeElement.setAttribute('src', data);
     }
+
+    private stopTracks() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.streaming = false;
+        }
+    }
+
+
 }
