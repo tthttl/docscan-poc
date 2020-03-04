@@ -1,6 +1,7 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ViewChild } from '@angular/core';
 import { AndroidPermissions } from '@ionic-native/android-permissions/ngx';
 import { Platform } from '@ionic/angular';
+import { ImageCapture } from 'image-capture';
 
 const constraints = {
     video: {
@@ -24,48 +25,56 @@ declare const cordova: any;
     templateUrl: 'tab2.page.html',
     styleUrls: ['tab2.page.scss']
 })
-export class Tab2Page {
-
+export class Tab2Page implements AfterViewInit {
 
     @ViewChild('video', {static: false}) video;
     @ViewChild('canvas', {static: false}) canvas;
     @ViewChild('photo', {static: false}) photo;
     width = 320;
     height = 0;
-    streaming = false;
+    isStreaming = false;
     stream: MediaStream;
+    imageCapture: ImageCapture;
 
     constructor(
         private platform: Platform,
         private androidPermissions: AndroidPermissions) {
     }
 
+    ngAfterViewInit(): void {
+        this.photo.nativeElement.setAttribute('crossorigin', 'anonymus'); //might cause a problem on iOS if missing..
+        if (this.platform.is('cordova')) {
+            cordova.plugins.iosrtc.registerGlobals(); //adding the missing mediaDevices object to navigator on iOS
+        }
+    }
+
     ionViewDidEnter() {
-        this.photo.nativeElement.setAttribute('crossorigin', 'anonymus');
         this.platform.ready().then(async () => {
-            if (this.platform.is('android')) {
-                try {
-                    let permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
-                    if (!permissionResponse.hasPermission) {
-                        await this.androidPermissions.requestPermissions([this.androidPermissions.PERMISSION.CAMERA]);
-                    }
-                } catch (error) {
-                    console.log(error);
-                }
-            }
-            if (this.platform.is('ios')) {
-                cordova.plugins.iosrtc.registerGlobals();
-                await cordova.plugins.iosrtc.requestPermission(false, true, (isApproved) =>
-                    console.log('requestPermission status: ', isApproved ? 'Approved' : 'Rejected')
-                );
-            }
-            await this.startup();
-            this.setSize();
+            await this.getPermissionForCamera();
+            await this.initialize();
         });
     }
 
+    private async getPermissionForCamera() {
+        if (this.platform.is('android')) {
+            try {
+                let permissionResponse = await this.androidPermissions.checkPermission(this.androidPermissions.PERMISSION.CAMERA);
+                if (!permissionResponse.hasPermission) {
+                    await this.androidPermissions.requestPermissions([this.androidPermissions.PERMISSION.CAMERA]);
+                }
+            } catch (error) {
+                console.log(error);
+            }
+        }
+        if (this.platform.is('ios')) {
+            await cordova.plugins.iosrtc.requestPermission(false, true, (isApproved) =>
+                console.log('requestPermission status: ', isApproved ? 'Approved' : 'Rejected')
+            );
+        }
+    }
+
     setSize() {
-        if (!this.streaming) {
+        if (!this.isStreaming) {
             this.height = this.video.nativeElement.videoHeight / (this.video.nativeElement.videoWidth / this.width);
             if (isNaN(this.height)) {
                 this.height = this.width / (4 / 3);
@@ -74,41 +83,54 @@ export class Tab2Page {
             this.video.nativeElement.setAttribute('height', this.height.toString());
             this.canvas.nativeElement.setAttribute('width', this.width.toString());
             this.canvas.nativeElement.setAttribute('height', this.height.toString());
-            this.streaming = true;
+            this.isStreaming = true;
         }
     }
 
-    takepicture() {
-        const context = this.canvas.nativeElement.getContext('2d');
-        if (this.width && this.height) {
-            this.canvas.nativeElement.width = this.width;
-            this.canvas.nativeElement.height = this.height;
-            context.drawImage(this.video.nativeElement, 0, 0, this.width, this.height);
-            const data = this.canvas.nativeElement.toDataURL('image/png');
-            console.log(data);
-            this.photo.nativeElement.setAttribute('src', data)
-        } else {
-            this.clearphoto();
-        }
+    play() {
+        this.video.nativeElement.srcObject = this.stream;
+        this.video.nativeElement.play();
+        this.isStreaming = true;
     }
 
+    stop() {
+        this.stopTracks();
+        this.isStreaming = false;
+        this.initialize();
+    }
+
+    snap() {
+        const ctx = this.canvas.nativeElement.getContext('2d');
+        const image = new Image();
+        image.onload = function () {
+            ctx.drawImage(this, 0, 0);
+        };
+        cordova.plugins.CameraStream.capture = function (data) {
+            image.src = data;
+        };
+        cordova.plugins.CameraStream.startCapture('front');
+        // TODO: Fix Plugin: CameraStream.swift & CameraStream.js
+
+     /*   if (this.isStreaming) {
+            this.imageCapture.takePhoto()
+                .then((blob: Blob) => this.photo.nativeElement.setAttribute('src', URL.createObjectURL(blob)))
+                .catch(error => console.error(error));
+        }*/
+    }
 
     ionViewDidLeave() {
-        if (this.video.nativeElement && this.video.nativeElement.srcObject) {
-            this.video.nativeElement.srcObject.getTracks().forEach(track => track.stop());
-        }
+        this.stopTracks();
     }
 
-    private async startup() {
-        this.stopTracks();
+    private async initialize() {
         try {
+            this.stopTracks();
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            this.video.nativeElement.srcObject = this.stream;
-            this.video.nativeElement.play();
-        } catch (err) {
-            console.log("An error occurred: " + err);
+            this.imageCapture = new ImageCapture(this.stream.getVideoTracks()[0]);
+            this.clearphoto();
+        } catch (error) {
+            console.error('Error at startup: ' + error.message);
         }
-        this.clearphoto();
     }
 
     private clearphoto() {
@@ -122,9 +144,9 @@ export class Tab2Page {
     private stopTracks() {
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
-            this.streaming = false;
+            //this.video.nativeElement.srcObject = this.stream;
+            this.isStreaming = false;
         }
     }
-
 
 }
